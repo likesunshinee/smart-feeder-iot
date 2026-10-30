@@ -1,4 +1,4 @@
-# Smart Feeder Station — Sistem Pakan Sapi Otomatis (ESP32 & RTC DS3231)
+# Smart Feeder Station — Sistem Pakan Otomatis (ESP32 & RTC DS3231)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg)](LICENSE)
 ![ESP32](https://img.shields.io/badge/Hardware-ESP32%20WiFi-0284c7?logo=espressif&logoColor=white)
