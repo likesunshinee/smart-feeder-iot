@@ -1,0 +1,61 @@
+# ==========================================
+# .gitignore — Smart Feeder Station (IoT)
+# ==========================================
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+*.lnk
+
+# Editor & IDE Directories
+.vscode/
+!.vscode/settings.json.example
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# Arduino, PlatformIO & Embedded Build Artifacts
+build/
+.pio/
+.pioenvs/
+.piolibdeps/
+*.hex
+*.bin
+*.elf
+*.eep
+*.o
+*.a
+*.s
+*.d
+*.map
+*.lst
+
+# Node.js & Web Dependencies / Logs
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Environment Variables & Private Credentials
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Temporary & Cache Files
+*.tmp
+*.temp
+*.bak
+*.orig
+.cache/

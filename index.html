@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Feeder Station — Sistem Pakan Sapi Otomatis ESP32 &amp; RTC DS3231</title>
+  <meta name="description" content="Dashboard IoT untuk monitoring jadwal pemberian pakan sapi otomatis ESP32 + RTC DS3231, telemetri stream serial, dan kontrol dispenser pakan &amp; pompa air minum sapi.">
+  
+  <!-- Google Fonts: Plus Jakarta Sans (Clean AgriTech UI) & JetBrains Mono (Technical Monospace) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Main Container -->
+  <div class="app-layout">
+    
+    <!-- HEADER BAR: FARM IOT HEADER WITH COW MASCOT -->
+    <header class="app-header" id="appHeader">
+      <div class="header-main">
+        <!-- Cow Mascot Avatar Frame -->
+        <div class="cow-avatar-frame" title="BovineFeed — Maskot Sapi Pintar">
+          <!-- Artisanal SVG Holstein Cow Icon -->
+          <svg class="cow-avatar-svg" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Ikon Sapi Perah">
+            <!-- Cow Horns -->
+            <path d="M18 20C15 14 11 15 10 17C9 19 12 24 16 23" fill="#D97706" stroke="#92400E" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M46 20C49 14 53 15 54 17C55 19 52 24 48 23" fill="#D97706" stroke="#92400E" stroke-width="1.5" stroke-linecap="round"/>
+            <!-- Cow Ears -->
+            <ellipse cx="14" cy="27" rx="7" ry="4" transform="rotate(-20 14 27)" fill="#FFFFFF" stroke="#233429" stroke-width="1.5"/>
+            <ellipse cx="14" cy="27" rx="4.5" ry="2.2" transform="rotate(-20 14 27)" fill="#FBCFE8"/>
+            <ellipse cx="50" cy="27" rx="7" ry="4" transform="rotate(20 50 27)" fill="#FFFFFF" stroke="#233429" stroke-width="1.5"/>
+            <ellipse cx="50" cy="27" rx="4.5" ry="2.2" transform="rotate(20 50 27)" fill="#FBCFE8"/>
+            <!-- Cow Head Base -->
+            <path d="M19 24C19 18 45 18 45 24C48 28 50 36 48 44C46 51 40 55 32 55C24 55 18 51 16 44C14 36 16 28 19 24Z" fill="#FFFFFF" stroke="#233429" stroke-width="2"/>
+            <!-- Cow Black Spots on Face -->
+            <path d="M21 23C24 23 27 26 26 31C25 35 20 36 17 32C16 28 18 23 21 23Z" fill="#233429"/>
+            <path d="M41 21C44 21 46 24 47 27C48 31 46 34 43 33C39 32 39 25 41 21Z" fill="#233429"/>
+            <!-- Cow Eyes -->
+            <ellipse cx="24" cy="34" rx="2.5" ry="3.5" fill="#233429"/>
+            <circle cx="23" cy="33" r="1" fill="#FFFFFF"/>
+            <ellipse cx="40" cy="34" rx="2.5" ry="3.5" fill="#233429"/>
+            <circle cx="39" cy="33" r="1" fill="#FFFFFF"/>
+            <!-- Cow Muzzle / Snout (Pink) -->
+            <rect x="20" y="40" width="24" height="15" rx="7.5" fill="#FCE7F3" stroke="#233429" stroke-width="1.5"/>
+            <!-- Nostrils -->
+            <ellipse cx="27" cy="47" rx="2" ry="2.5" fill="#BE185D"/>
+            <ellipse cx="37" cy="47" rx="2" ry="2.5" fill="#BE185D"/>
+            <!-- Friendly Mouth with grass blade -->
+            <path d="M29 51C31 52.5 33 52.5 35 51" stroke="#233429" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M35 51C39 52 44 50 46 47" stroke="#16A34A" stroke-width="2" stroke-linecap="round"/>
+            <!-- Cowbell Ribbon -->
+            <path d="M25 56L32 59L39 56" stroke="#23643B" stroke-width="2" stroke-linecap="round"/>
+            <polygon points="30,59 34,59 35,63 29,63" fill="#F59E0B" stroke="#B45309" stroke-width="1"/>
+          </svg>
+          <span class="cow-ear-tag-mini">#32</span>
+        </div>
+
+        <div class="header-title-block">
+          <div class="header-title-row">
+            <h1 class="header-title">Smart Feeder Station</h1>
+            <span class="cow-badge-pill" title="Sistem Otomasi Pakan Sapi Modern">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
+              Sistem Pakan Sapi
+            </span>
+            <span class="status-chip chip-simulation" id="connectionModeBadge" title="Status Komunikasi Sistem">
+              <span class="status-dot"></span>
+              <span id="connectionStatusText">SIMULATION MODE</span>
+            </span>
+          </div>
+          <p class="header-subtitle">
+            <span>🏡 Kandang Sapi Blok A</span>
+            <span class="header-subtitle-sep">•</span>
+            <span>ESP32 &amp; RTC DS3231 Automated Cattle Feeder &amp; Water Circulation</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Last Activity Timestamp -->
+        <div class="activity-timestamp" id="lastActivityContainer" title="Waktu aktivitas data terakhir">
+          <span class="timestamp-label">Sesi Kandang Aktif</span>
+          <span class="timestamp-value font-mono" id="lastActivityText">Aktivitas: Baru dimulai</span>
+        </div>
+
+        <!-- ESP32 Firmware Code Viewer Button -->
+        <button type="button" class="btn btn-secondary btn-sm" id="openEsp32ModalBtn" title="Lihat kode firmware Arduino ESP32">
+          <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 18 22 12 16 6"></polyline>
+            <polyline points="8 6 2 12 8 18"></polyline>
+          </svg>
+          Kode ESP32 (.ino)
+        </button>
+      </div>
+    </header>
+
+    <!-- TEST BENCH & SIMULATION CONTROL BAR -->
+    <section class="control-toolbar" id="simulationToolbar" aria-label="Toolbar Simulasi IoT">
+      <div class="toolbar-summary">
+        <span class="toolbar-label">TEST BENCH</span>
+        <span class="toolbar-desc">Simulasi telemetri data serial ESP32, event jadwal pakan sapi, dan respons aktuator virtual</span>
+      </div>
+
+      <div class="toolbar-actions">
+        <button type="button" class="btn btn-sm btn-feed-action" id="triggerFeedBtn" title="Simulasikan trigger jadwal pakan saat ini">
+          🌾 Trigger Pakan Sapi (06:00)
+        </button>
+        <button type="button" class="btn btn-sm btn-secondary" id="toggleMqttBtn" title="Koneksikan ke ESP32 via MQTT (broker.emqx.io)">
+          <span id="mqttBtnIcon" class="btn-icon">📡</span>
+          <span id="mqttBtnText">Hubungkan MQTT</span>
+        </button>
+        <button type="button" class="btn btn-sm btn-secondary" id="toggleStreamBtn" title="Jeda atau lanjutkan stream data serial">
+          <span id="streamBtnIcon" class="btn-icon">⏸</span>
+          <span id="streamBtnText">Jeda Stream</span>
+        </button>
+        <button type="button" class="btn btn-sm btn-secondary" id="injectValidBtn" title="Kirim satu baris data RTC valid">
+          + Paket Valid
+        </button>
+        <button type="button" class="btn btn-sm btn-secondary" id="injectInvalidBtn" title="Uji penanganan format data salah (TC-04)">
+          Paket Rusak
+        </button>
+        <button type="button" class="btn btn-sm btn-secondary" id="toggleSimDrawerBtn" aria-expanded="false" aria-controls="simDrawer" title="Buka pengaturan parameter simulasi">
+          Pengaturan
+        </button>
+      </div>
+
+      <!-- Collapsible Simulation Drawer -->
+      <div class="sim-drawer collapsed" id="simDrawer">
+        <div class="drawer-grid">
+          <!-- Quick Schedule Trigger Selection -->
+          <div class="drawer-col">
+            <label for="feedScheduleSelect" class="drawer-label">Uji Trigger Jadwal Pakan Sapi</label>
+            <div class="inline-input-group">
+              <select id="feedScheduleSelect" class="form-select">
+                <option value="06:00">Pakan Pagi — 06:00 WIB (Silase &amp; Konsentrat)</option>
+                <option value="12:00">Pakan Siang — 12:00 WIB (Rumput Gajah)</option>
+                <option value="15:15">Pakan Sore Awal — 15:15 WIB (Uji Lapangan ESP32)</option>
+                <option value="18:00">Pakan Sore — 18:00 WIB (Konsentrat &amp; Mineral)</option>
+              </select>
+              <button type="button" class="btn btn-sm btn-primary" id="execFeedSelectBtn">Kirim Event</button>
+            </div>
+          </div>
+
+          <!-- Stream Interval -->
+          <div class="drawer-col">
+            <label for="streamIntervalRange" class="drawer-label">Interval Stream Data: <span id="intervalValueLabel" class="font-mono">2.0s</span></label>
+            <input type="range" id="streamIntervalRange" min="500" max="5000" step="250" value="2000" class="form-slider">
+          </div>
+
+          <!-- Simulated Pump Failure Toggle -->
+          <div class="drawer-col">
+            <label class="drawer-label">Simulasi Respons Perintah Pompa Air / Pakan</label>
+            <div class="toggle-control">
+              <label class="switch">
+                <input type="checkbox" id="failControlToggle">
+                <span class="slider"></span>
+              </label>
+              <span class="toggle-text" id="failToggleLabel">Respons Normal (Berhasil)</span>
+            </div>
+            <span class="field-hint">Aktifkan untuk mensimulasikan kegagalan NACK/Timeout (TC-07)</span>
+          </div>
+
+          <!-- Connection State Override -->
+          <div class="drawer-col">
+            <label for="mockConnStateSelect" class="drawer-label">Status Koneksi Perangkat Kandang</label>
+            <select id="mockConnStateSelect" class="form-select">
+              <option value="SIMULATION">SIMULATION MODE (Default)</option>
+              <option value="CONNECTED">CONNECTED (ESP32 Gateway)</option>
+              <option value="DISCONNECTED">DISCONNECTED (Terputus)</option>
+              <option value="CONNECTING">CONNECTING (Menghubungkan...)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Manual Serial Injector -->
+        <div class="manual-serial-group">
+          <label for="customPayloadInput" class="drawer-label">Injeksi String Serial Mentah (Format Bebas untuk Uji Parser):</label>
+          <div class="inline-input-group">
+            <input type="text" id="customPayloadInput" placeholder="Contoh: Tanggal: 28/10/2026 | Waktu: 06:00:00 atau >>> WAKTU PEMBERIAN PAKAN <<<" class="form-input font-mono">
+            <button type="button" class="btn btn-sm btn-primary" id="sendCustomPayloadBtn">Kirim ke Terminal</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MAIN TWO-COLUMN DASHBOARD GRID -->
+    <main class="dashboard-grid">
+
+      <!-- LEFT COLUMN: PRIMARY JADWAL PAKAN & TELEMETRI RTC -->
+      <div class="grid-column col-main">
+        
+        <!-- SECTION 1: SMART FEEDING SCHEDULE PANEL -->
+        <section class="panel panel-feeding" id="feedingSchedulePanel">
+          <div class="panel-header">
+            <div class="panel-header-title">
+              <h2 class="panel-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#23643b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2a10 10 0 1 0 10 10H12V2z"></path>
+                  <path d="M12 12L2.5 7.5"></path>
+                </svg>
+                Jadwal Pemberian Pakan Sapi Otomatis
+              </h2>
+              <p class="panel-subtitle">Siklus ruminansia 3 kali per hari dikontrol presisi modul RTC DS3231</p>
+            </div>
+            <div class="panel-header-badges">
+              <span class="badge badge-neutral">4 Siklus Pakan Sapi</span>
+              <span class="badge badge-cyan">Siklus 24 Jam</span>
+            </div>
+          </div>
+
+          <div class="panel-body">
+            <!-- Event Alert Banner (Appears only on event trigger, with animated chewing cow) -->
+            <div class="feed-event-banner hidden" id="feedEventAlert" role="alert">
+              <div class="feed-event-left">
+                <div class="feed-event-cow-anim" title="Sapi Sedang Diberi Pakan">
+                  <!-- Animated Chewing Cow SVG -->
+                  <svg width="30" height="30" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="32" cy="32" r="28" fill="#F0FDF4"/>
+                    <!-- Cow Face -->
+                    <path d="M20 25C20 19 44 19 44 25C47 29 48 37 46 43C44 49 39 52 32 52C25 52 20 49 18 43C16 37 17 29 20 25Z" fill="#FFFFFF" stroke="#233429" stroke-width="2"/>
+                    <path d="M22 24C25 24 27 27 26 31C25 35 21 36 19 32C18 28 20 24 22 24Z" fill="#233429"/>
+                    <ellipse cx="25" cy="34" rx="2" ry="3" fill="#233429"/>
+                    <ellipse cx="39" cy="34" rx="2" ry="3" fill="#233429"/>
+                    <rect x="22" y="40" width="20" height="12" rx="6" fill="#FCE7F3" stroke="#233429" stroke-width="1.5"/>
+                    <circle cx="28" cy="46" r="1.5" fill="#BE185D"/>
+                    <circle cx="36" cy="46" r="1.5" fill="#BE185D"/>
+                    <!-- Fresh grass in mouth -->
+                    <path d="M30 49C35 50 42 47 48 43" stroke="#16A34A" stroke-width="2.5" stroke-linecap="round"/>
+                    <path d="M32 50C38 53 45 52 50 48" stroke="#22C55E" stroke-width="2" stroke-linecap="round"/>
+                  </svg>
+                </div>
+                <div class="feed-event-content">
+                  <div class="feed-event-title-wrap">
+                    <span class="status-dot status-dot-active"></span>
+                    <strong id="feedEventTitle">WAKTU PEMBERIAN PAKAN SAPI TERDETEKSI</strong>
+                  </div>
+                  <p id="feedEventDesc">Dispenser pakan palungan sapi aktif. Takaran konsentrat dialirkan oleh controller ESP32.</p>
+                </div>
+              </div>
+              <span class="feed-event-time font-mono" id="feedEventTime">--:--:--</span>
+            </div>
+
+            <!-- 4 Schedules Grid (06:00, 12:00, 15:15, 18:00) -->
+            <div class="schedule-grid">
+              
+              <!-- Schedule 1: 06:00 (Pagi) -->
+              <div class="schedule-item" id="schedCard1" data-schedule="06:00">
+                <div class="schedule-item-header">
+                  <div class="schedule-slot-name-group">
+                    <span class="schedule-icon-wrap" title="Pakan Pagi">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                      </svg>
+                    </span>
+                    <span class="schedule-slot-name">Pakan Pagi</span>
+                  </div>
+                  <span class="schedule-status status-idle" id="schedStatus1">MENUNGGU</span>
+                </div>
+                <div class="schedule-time font-mono">06:00 <span class="schedule-tz">WIB</span></div>
+                <div class="schedule-feed-desc">🌾 Silase &amp; Konsentrat Pagi</div>
+                <div class="schedule-specs">
+                  <span class="spec-tag">Takaran: 3.5 kg</span>
+                  <span class="spec-tag">Durasi: 5s</span>
+                  <span class="spec-tag">Palungan A</span>
+                </div>
+                <div class="schedule-meta" id="schedLast1">Belum dijalankan hari ini</div>
+              </div>
+
+              <!-- Schedule 2: 12:00 (Siang) -->
+              <div class="schedule-item" id="schedCard2" data-schedule="12:00">
+                <div class="schedule-item-header">
+                  <div class="schedule-slot-name-group">
+                    <span class="schedule-icon-wrap" title="Pakan Siang">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2" stroke-linecap="round">
+                        <path d="M12 2L15 8L21 9L17 14L18 20L12 17L6 20L7 14L3 9L9 8L12 2Z"></path>
+                      </svg>
+                    </span>
+                    <span class="schedule-slot-name">Pakan Siang</span>
+                  </div>
+                  <span class="schedule-status status-idle" id="schedStatus2">MENUNGGU</span>
+                </div>
+                <div class="schedule-time font-mono">12:00 <span class="schedule-tz">WIB</span></div>
+                <div class="schedule-feed-desc">🌿 Rumput Gajah Segar</div>
+                <div class="schedule-specs">
+                  <span class="spec-tag">Takaran: 5.0 kg</span>
+                  <span class="spec-tag">Durasi: 6s</span>
+                  <span class="spec-tag">Palungan A</span>
+                </div>
+                <div class="schedule-meta" id="schedLast2">Belum dijalankan hari ini</div>
+              </div>
+
+              <!-- Schedule 3: 15:15 (Sore Awal / Uji Lapangan) -->
+              <div class="schedule-item" id="schedCard3" data-schedule="15:15">
+                <div class="schedule-item-header">
+                  <div class="schedule-slot-name-group">
+                    <span class="schedule-icon-wrap" title="Pakan Sore Awal">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EAB308" stroke-width="2" stroke-linecap="round">
+                        <circle cx="12" cy="12" r="4"></circle>
+                        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+                      </svg>
+                    </span>
+                    <span class="schedule-slot-name">Pakan Sore Awal</span>
+                  </div>
+                  <span class="schedule-status status-idle" id="schedStatus3">MENUNGGU</span>
+                </div>
+                <div class="schedule-time font-mono">15:15 <span class="schedule-tz">WIB</span></div>
+                <div class="schedule-feed-desc">🌱 Hijauan &amp; Suplemen</div>
+                <div class="schedule-specs">
+                  <span class="spec-tag">Takaran: 2.5 kg</span>
+                  <span class="spec-tag">Durasi: 4s</span>
+                  <span class="spec-tag">Palungan A</span>
+                </div>
+                <div class="schedule-meta" id="schedLast3">Belum dijalankan hari ini</div>
+              </div>
+
+              <!-- Schedule 4: 18:00 (Sore / Petang) -->
+              <div class="schedule-item" id="schedCard4" data-schedule="18:00">
+                <div class="schedule-item-header">
+                  <div class="schedule-slot-name-group">
+                    <span class="schedule-icon-wrap" title="Pakan Sore">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                      </svg>
+                    </span>
+                    <span class="schedule-slot-name">Pakan Sore</span>
+                  </div>
+                  <span class="schedule-status status-idle" id="schedStatus4">MENUNGGU</span>
+                </div>
+                <div class="schedule-time font-mono">18:00 <span class="schedule-tz">WIB</span></div>
+                <div class="schedule-feed-desc">🥕 Konsentrat &amp; Mineral</div>
+                <div class="schedule-specs">
+                  <span class="spec-tag">Takaran: 3.5 kg</span>
+                  <span class="spec-tag">Durasi: 5s</span>
+                  <span class="spec-tag">Palungan A</span>
+                </div>
+                <div class="schedule-meta" id="schedLast4">Belum dijalankan hari ini</div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 2: RTC CLOCK SYNCHRONIZATION -->
+        <section class="panel panel-rtc" id="rtcSummaryCard">
+          <div class="panel-header">
+            <div class="panel-header-title">
+              <h2 class="panel-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#23643b" stroke-width="2.2" stroke-linecap="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                Waktu Jam RTC DS3231 (Master Clock Kandang)
+              </h2>
+              <p class="panel-subtitle">Waktu acuan pembanding jadwal pakan sapi — tersinkron otomatis saat proses compile ESP32</p>
+            </div>
+            <!-- Sync pulse status badge -->
+            <div class="packet-status-badge status-waiting" id="rtcPacketStatusBadge">
+              <span class="badge-dot"></span>
+              <span id="rtcPacketStatusText">Menunggu data RTC</span>
+            </div>
+          </div>
+
+          <div class="panel-body">
+            <div class="rtc-metric-grid">
+              <!-- RTC Date Metric -->
+              <div class="metric-block">
+                <span class="metric-label">Tanggal RTC</span>
+                <div class="metric-value font-mono" id="rtcLatestDate">--/--/----</div>
+                <span class="metric-subtext" id="rtcDateSub">Belum ada data masuk</span>
+              </div>
+
+              <!-- RTC Time Metric (Primary) -->
+              <div class="metric-block metric-block-highlight">
+                <span class="metric-label">Waktu RTC Aktif (24 Jam)</span>
+                <div class="metric-value font-mono text-cyan" id="rtcLatestTime">--:--:--</div>
+                <span class="metric-subtext" id="rtcTimeSub">Sinkronisasi Komputer (WIB)</span>
+              </div>
+
+              <!-- MCU Log Timestamp Metric -->
+              <div class="metric-block">
+                <span class="metric-label">Timestamp Serial ESP32</span>
+                <div class="metric-value font-mono metric-value-muted" id="rtcLatestLogTime">--:--:--.---</div>
+                <span class="metric-subtext">Waktu kirim port serial MCU</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 3: SERIAL TELEMETRY STREAM MONITOR -->
+        <section class="panel panel-terminal" id="rtcStreamPanel">
+          <div class="panel-header terminal-header">
+            <div class="panel-header-title">
+              <h2 class="panel-title font-mono">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#86efac" stroke-width="2" stroke-linecap="round">
+                  <polyline points="4 17 10 11 4 5"></polyline>
+                  <line x1="12" y1="19" x2="20" y2="19"></line>
+                </svg>
+                Serial Telemetry Stream — Kandang Sapi
+              </h2>
+              <span class="badge badge-counter font-mono" id="logCounterBadge">0 entri</span>
+            </div>
+
+            <!-- Terminal Tools -->
+            <div class="terminal-actions">
+              <label class="checkbox-container font-mono" title="Scroll otomatis ke baris data terbaru">
+                <input type="checkbox" id="autoScrollToggle" checked>
+                <span class="checkmark"></span>
+                Auto-Scroll
+              </label>
+              <button type="button" class="btn btn-xs btn-secondary" id="copyAllLogsBtn" title="Salin seluruh log ke clipboard">
+                Salin Log
+              </button>
+              <button type="button" class="btn btn-xs btn-secondary" id="clearLogsBtn" title="Bersihkan log dari layar">
+                Bersihkan
+              </button>
+            </div>
+          </div>
+
+          <!-- Format Guide Legend -->
+          <div class="terminal-legend font-mono">
+            <span>FORMAT: <code>Tanggal: &lt;dd/mm/yyyy&gt; | Waktu: &lt;HH:mm:ss&gt;</code></span>
+            <span>Baud: 115200 • Buffer: Maksimal 100 log telemetri</span>
+          </div>
+
+          <!-- Terminal Screen Body -->
+          <div class="terminal-screen font-mono" id="terminalScreen" role="log" aria-live="polite">
+            <div class="terminal-placeholder" id="terminalEmptyState">
+              <div class="terminal-placeholder-icon">🐄📡</div>
+              <p>Menunggu data telemetri serial ESP32 / RTC...</p>
+              <span>Pastikan kabel USB terhubung atau jalankan simulator di atas</span>
+            </div>
+            <!-- Log rows injected by app.js -->
+            <ul class="log-stream-list" id="logStreamList"></ul>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- RIGHT COLUMN: ACTUATOR CONTROL & ACTIVITY LOG -->
+      <div class="grid-column col-side">
+
+        <!-- PANEL: ACTUATOR MANUAL CONTROL -->
+        <section class="panel panel-pump" id="pumpControlPanel">
+          <div class="panel-header">
+            <div class="panel-header-title">
+              <h2 class="panel-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#23643b" stroke-width="2.2" stroke-linecap="round">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+                Dispenser Pakan &amp; Pompa Air Sapi
+              </h2>
+              <p class="panel-subtitle">Kontrol motor dispenser palungan &amp; pompa sirkulasi air minum sapi</p>
+            </div>
+          </div>
+
+          <div class="panel-body">
+            
+            <!-- Actuator Status Display Box -->
+            <!-- Cattle Trough & Drink Station Interactive Visualizer -->
+            <div class="cattle-trough-box" id="cattleTroughBox">
+              <div class="trough-header-row">
+                <span class="trough-title">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#23643b" stroke-width="2">
+                    <path d="M3 14c0 4 4 7 9 7s9-3 9-7V8H3v6z"></path>
+                    <line x1="3" y1="8" x2="21" y2="8"></line>
+                  </svg>
+                  Palungan &amp; Bak Minum Sapi (Blok A)
+                </span>
+                <span class="trough-badge" id="troughBadge">Sirkulasi Otomatis</span>
+              </div>
+              
+              <!-- Clean SVG Palungan Sapi Visualizer -->
+              <div class="trough-illustration-wrap">
+                <svg class="trough-svg" viewBox="0 0 280 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <!-- Ground Pasture Line -->
+                  <line x1="10" y1="72" x2="270" y2="72" stroke="#DCD3BE" stroke-width="2" stroke-linecap="round"/>
+                  <!-- Cute Cow Silhouette peeking at the trough -->
+                  <g transform="translate(18, 22)">
+                    <path d="M12 28C10 20 18 10 26 12C32 14 36 20 38 28" fill="#FFFFFF" stroke="#233429" stroke-width="1.5"/>
+                    <ellipse cx="22" cy="18" rx="4" ry="5" fill="#233429"/>
+                    <circle cx="36" cy="14" r="9" fill="#FFFFFF" stroke="#233429" stroke-width="1.5"/>
+                    <path d="M38 12C41 12 43 14 43 17C43 20 40 21 38 20" fill="#FCE7F3" stroke="#233429" stroke-width="1"/>
+                    <ellipse cx="34" cy="13" rx="1.2" ry="1.8" fill="#233429"/>
+                    <path d="M32 6C30 3 28 3 27 5" stroke="#D97706" stroke-width="1.5" stroke-linecap="round"/>
+                    <ellipse cx="28" cy="12" rx="3" ry="1.5" transform="rotate(-30 28 12)" fill="#FBCFE8"/>
+                  </g>
+
+                  <!-- Trough Stand Legs -->
+                  <rect x="75" y="58" width="8" height="14" rx="2" fill="#78716C"/>
+                  <rect x="235" y="58" width="8" height="14" rx="2" fill="#78716C"/>
+
+                  <!-- Trough Basin (Palungan) -->
+                  <path d="M68 34H250L240 60H78L68 34Z" fill="#E2E8F0" stroke="#475569" stroke-width="2"/>
+                  <!-- Water Level in Trough -->
+                  <path class="trough-water-surface" d="M72 44H246L238 58H80L72 44Z" fill="#67E8F9" opacity="0.8"/>
+
+                  <!-- Water Inflow Pipe from Top Left (Pump 2) -->
+                  <path d="M110 8V24H125" stroke="#64748B" stroke-width="4" stroke-linecap="round"/>
+                  <!-- Animated Water Stream flowing into trough (Active when Pump 2 is ON) -->
+                  <line class="trough-water-stream" x1="125" y1="26" x2="125" y2="44" stroke="#06B6D4" stroke-width="3" stroke-dasharray="4 3" stroke-linecap="round"/>
+
+                  <!-- Feed Dispenser Silo Pipe (Pump 1 - Right) -->
+                  <path d="M190 8V24H175" stroke="#94A3B8" stroke-width="4" stroke-linecap="round"/>
+                  <!-- Feed Pellets Indicator (Active when Pump 1 is ON) -->
+                  <circle class="trough-feed-pellet" cx="175" cy="40" r="2.5" fill="#D97706"/>
+                  <circle class="trough-feed-pellet" cx="182" cy="42" r="2" fill="#B45309"/>
+                  <circle class="trough-feed-pellet" cx="168" cy="43" r="2" fill="#D97706"/>
+
+                  <!-- Pasture Grass Tufts around trough -->
+                  <path d="M50 72L53 64L56 72" stroke="#16A34A" stroke-width="1.5" stroke-linecap="round"/>
+                  <path d="M255 72L258 63L262 72" stroke="#16A34A" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Command Feedback Banner -->
+            <div class="command-feedback idle" id="commandFeedbackBox" role="status">
+              <span class="feedback-icon" id="feedbackIcon">●</span>
+              <span class="feedback-text" id="feedbackText">Siap menerima perintah kontrol palungan sapi.</span>
+            </div>
+
+            <!-- SUBPANEL 1: PUMP 1 (DISPENSER PAKAN SAPI - GPIO 19) -->
+            <div class="actuator-subpanel" id="pump1Subpanel">
+              <div class="actuator-subpanel-header">
+                <span class="actuator-subpanel-title">
+                  🌾 PUMP 1 — Dispenser Pakan Sapi
+                </span>
+                <span class="actuator-chip">Relay GPIO 19</span>
+              </div>
+
+              <!-- Status Card Pump 1 -->
+              <div class="actuator-status-card status-unknown" id="pump1StatusBox">
+                <div class="actuator-status-indicator" id="pump1VisualRing">
+                  <span class="indicator-glyph">🌾</span>
+                </div>
+                <div class="actuator-status-info">
+                  <span class="actuator-label">STATUS PUMP 1 (PAKAN KONSENTRAT)</span>
+                  <div class="actuator-state-value font-mono" id="pump1StatusBadge">
+                    <span id="pump1StatusText">UNKNOWN</span>
+                  </div>
+                  <p class="actuator-desc" id="pump1StatusDesc">
+                    Motor dispenser pakan konsentrat sapi sedang standby.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Buttons Pump 1 -->
+              <div class="actuator-button-grid">
+                <button type="button" class="btn btn-pump btn-pump-on" id="pump1OnBtn" aria-label="Nyalakan Pump 1 Dispenser Pakan">
+                  <div class="btn-pump-inner">
+                    <span class="btn-pump-title">PUMP 1 ON</span>
+                    <span class="btn-pump-desc">Putar Motor Pakan (GPIO 19)</span>
+                  </div>
+                  <div class="btn-spinner" aria-hidden="true"></div>
+                </button>
+
+                <button type="button" class="btn btn-pump btn-pump-off" id="pump1OffBtn" aria-label="Matikan Pump 1 Dispenser Pakan">
+                  <div class="btn-pump-inner">
+                    <span class="btn-pump-title">PUMP 1 OFF</span>
+                    <span class="btn-pump-desc">Hentikan Motor Pakan</span>
+                  </div>
+                  <div class="btn-spinner" aria-hidden="true"></div>
+                </button>
+              </div>
+            </div>
+
+            <!-- SUBPANEL 2: PUMP 2 (POMPA AIR MINUM SAPI - GPIO 18) -->
+            <div class="actuator-subpanel" id="pump2Subpanel">
+              <div class="actuator-subpanel-header">
+                <span class="actuator-subpanel-title">
+                  💧 PUMP 2 — Pompa Air Minum Sapi
+                </span>
+                <span class="actuator-chip chip-water">Relay GPIO 18</span>
+              </div>
+
+              <!-- Status Card Pump 2 -->
+              <div class="actuator-status-card status-unknown" id="pump2StatusBox">
+                <div class="actuator-status-indicator" id="pump2VisualRing">
+                  <span class="indicator-glyph">💧</span>
+                </div>
+                <div class="actuator-status-info">
+                  <span class="actuator-label">STATUS PUMP 2 (AIR MINUM PALUNGAN)</span>
+                  <div class="actuator-state-value font-mono" id="pump2StatusBadge">
+                    <span id="pump2StatusText">UNKNOWN</span>
+                  </div>
+                  <p class="actuator-desc" id="pump2StatusDesc">
+                    Pompa sirkulasi air minum sapi sedang standby.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Buttons Pump 2 -->
+              <div class="actuator-button-grid">
+                <button type="button" class="btn btn-pump btn-pump-water-on" id="pump2OnBtn" aria-label="Nyalakan Pump 2 Pompa Air Minum">
+                  <div class="btn-pump-inner">
+                    <span class="btn-pump-title">PUMP 2 ON</span>
+                    <span class="btn-pump-desc">Alirkan Air Minum (GPIO 18)</span>
+                  </div>
+                  <div class="btn-spinner" aria-hidden="true"></div>
+                </button>
+
+                <button type="button" class="btn btn-pump btn-pump-off" id="pump2OffBtn" aria-label="Matikan Pump 2 Pompa Air Minum">
+                  <div class="btn-pump-inner">
+                    <span class="btn-pump-title">PUMP 2 OFF</span>
+                    <span class="btn-pump-desc">Hentikan Aliran Air</span>
+                  </div>
+                  <div class="btn-spinner" aria-hidden="true"></div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Hidden alias elements for backward test compatibility -->
+            <div style="display:none;">
+              <div id="pumpStatusBox"><span id="pumpVisualRing"></span><span id="pumpStatusBadge"><span id="pumpStatusText">UNKNOWN</span></span><span id="pumpStatusDesc"></span><button id="pumpOnBtn"></button><button id="pumpOffBtn"></button></div>
+            </div>
+
+            <p class="actuator-note font-mono">
+              Kontrol Pump 1 (Pakan) &amp; Pump 2 (Air) terhubung via MQTT (GPIO 19 &amp; 18) dengan respons konfirmasi dua arah (~800ms).
+            </p>
+
+          </div>
+        </section>
+
+        <!-- PANEL: ACTIVITY HISTORY LOG TABLE -->
+        <section class="panel panel-activity" id="activityLogPanel">
+          <div class="panel-header">
+            <div class="panel-header-title">
+              <h2 class="panel-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#23643b" stroke-width="2.2" stroke-linecap="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+                Riwayat Kontrol Palungan (Activity Log)
+              </h2>
+              <p class="panel-subtitle">Log perintah manual pakan &amp; pompa sapi pada sesi ini</p>
+            </div>
+            <button type="button" class="btn btn-xs btn-secondary" id="clearActivityBtn" title="Bersihkan riwayat perintah">
+              Bersihkan
+            </button>
+          </div>
+
+          <div class="panel-body p-0">
+            <div class="activity-table-wrapper">
+              <table class="activity-table" id="activityTable">
+                <thead>
+                  <tr>
+                    <th scope="col">Waktu</th>
+                    <th scope="col">Perintah</th>
+                    <th scope="col">Hasil</th>
+                    <th scope="col">Latensi</th>
+                  </tr>
+                </thead>
+                <tbody id="activityTableBody">
+                  <tr class="activity-empty-row" id="activityEmptyRow">
+                    <td colspan="4" class="text-center text-muted">
+                      Belum ada perintah kontrol yang dikirim pada sesi ini.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+    <!-- ESP32 ARDUINO FIRMWARE MODAL -->
+    <div class="modal-backdrop" id="esp32ModalBackdrop" aria-hidden="true">
+      <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="badge badge-neutral">FIRMWARE SOURCE</span>
+            <h3 class="modal-title" id="modalTitle">Program ESP32 + RTC DS3231 Smart Cattle Feeder</h3>
+          </div>
+          <button type="button" class="btn-close" id="closeEsp32ModalBtn" aria-label="Tutup Jendela">&times;</button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="firmware-reference-box">
+            <div class="ref-row">
+              <strong>Spesifikasi Pinout &amp; Relay:</strong>
+              <span class="font-mono text-xs">Pump1 = GPIO 19 | Pump2 = GPIO 18 | Button BT = GPIO 5 | SDA = GPIO 21 | SCL = GPIO 22</span>
+            </div>
+            <div class="ref-row">
+              <strong>Koneksi MQTT Broker:</strong>
+              <span class="font-mono text-xs">broker.emqx.io:1883 (ESP32) / WSS :8084 (Website)</span>
+            </div>
+            <div class="ref-row">
+              <strong>Topic MQTT:</strong>
+              <span class="text-xs"><code>smartfeeding/rtc/data</code> • <code>smartfeeding/rtc/log</code> • <code>smartfeeding/pump/command</code> • <code>smartfeeding/pump/status</code> • <code>smartfeeding/rtc/schedule</code></span>
+            </div>
+            <div class="ref-row">
+              <strong>Jadwal Pakan Sapi:</strong>
+              <span class="text-xs">4 Jadwal Harian: <strong>06:00, 12:00, 15:15, 18:00 WIB</strong> (Publikasi otomatis event).</span>
+            </div>
+          </div>
+
+          <div class="code-box-header">
+            <span class="font-mono text-xs text-muted">esp32_smart_feeding_rtc.ino (WiFi + MQTT)</span>
+            <button type="button" class="btn btn-xs btn-primary" id="copyEsp32CodeBtn">
+              Salin Kode Lengkap
+            </button>
+          </div>
+          <pre class="code-pre font-mono"><code id="esp32CodeContent">#include &lt;WiFi.h&gt;
+#include &lt;PubSubClient.h&gt;
+#include &lt;Wire.h&gt;
+#include "RTClib.h"
+
+// ================= WIFI =================
+const char* WIFI_SSID = "Samsung A17";
+const char* WIFI_PASSWORD = "Fyreablaze";
+
+// ================= MQTT =================
+const char* MQTT_SERVER = "broker.emqx.io";
+const int MQTT_PORT = 1883;
+
+const char* TOPIC_RTC_DATA = "smartfeeding/rtc/data";
+const char* TOPIC_RTC_LOG = "smartfeeding/rtc/log";
+const char* TOPIC_PUMP_STATUS = "smartfeeding/pump/status";
+const char* TOPIC_PUMP_COMMAND = "smartfeeding/pump/command";
+const char* TOPIC_SCHEDULE = "smartfeeding/rtc/schedule";
+
+// ================= PIN ESP32 =================
+#define Pump1 19
+#define Pump2 18
+#define BT 5
+
+RTC_DS3231 rtc;
+WiFiClient espClient;
+PubSubClient mqtt(espClient);
+
+// ================= JADWAL PAKAN (4 KALI) =================
+const int jadwalJam[]   = {6, 12, 15, 18};
+const int jadwalMenit[] = {0, 0, 15, 0};
+const int JUMLAH_JADWAL = 4;
+
+bool jadwalSudahJalan[JUMLAH_JADWAL] = {false, false, false, false};
+int hariTerakhir = -1, bulanTerakhir = -1, tahunTerakhir = -1;
+
+// Status kontrol mandiri Pump 1 (Pakan) &amp; Pump 2 (Air)
+bool mqttPump1On = false;
+bool mqttPump2On = false;
+bool statusP1Sebelumnya = false;
+bool statusP2Sebelumnya = false;
+
+unsigned long waktuKirimTerakhir = 0;
+const unsigned long INTERVAL_KIRIM = 1000;
+
+void koneksiWiFi() {
+  Serial.print("Menghubungkan ke WiFi: ");
+  Serial.println(WIFI_SSID);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nWiFi terhubung! IP: " + WiFi.localIP().toString());
+}
+
+void callback(char* topic, byte* payload, unsigned int length) {
+  String pesan = "";
+  for (unsigned int i = 0; i &lt; length; i++) pesan += (char)payload[i];
+  pesan.trim();
+  pesan.toUpperCase();
+
+  if (String(topic) == TOPIC_PUMP_COMMAND) {
+    // Kontrol Pump 1: Dispenser Pakan (GPIO 19)
+    if (pesan == "PUMP1 ON" || pesan == "PUMP1_ON" || pesan == "PUMP 1 ON") {
+      mqttPump1On = true;
+      Serial.println("Perintah: Pump 1 (Pakan) ON");
+    } else if (pesan == "PUMP1 OFF" || pesan == "PUMP1_OFF" || pesan == "PUMP 1 OFF") {
+      mqttPump1On = false;
+      Serial.println("Perintah: Pump 1 (Pakan) OFF");
+    }
+    // Kontrol Pump 2: Pompa Air Minum (GPIO 18)
+    else if (pesan == "PUMP2 ON" || pesan == "PUMP2_ON" || pesan == "PUMP 2 ON") {
+      mqttPump2On = true;
+      Serial.println("Perintah: Pump 2 (Air) ON");
+    } else if (pesan == "PUMP2 OFF" || pesan == "PUMP2_OFF" || pesan == "PUMP 2 OFF") {
+      mqttPump2On = false;
+      Serial.println("Perintah: Pump 2 (Air) OFF");
+    }
+    // Kompatibilitas kontrol serentak
+    else if (pesan == "PUMP ON" || pesan == "ON" || pesan == "ALL ON") {
+      mqttPump1On = true; mqttPump2On = true;
+    } else if (pesan == "PUMP OFF" || pesan == "OFF" || pesan == "ALL OFF") {
+      mqttPump1On = false; mqttPump2On = false;
+    }
+  }
+}
+
+void koneksiMQTT() {
+  while (!mqtt.connected()) {
+    Serial.print("Menghubungkan ke MQTT...");
+    String clientId = "SmartFeeding-" + String((uint32_t)ESP.getEfuseMac(), HEX);
+    if (mqtt.connect(clientId.c_str())) {
+      Serial.println("Terhubung!");
+      mqtt.subscribe(TOPIC_PUMP_COMMAND);
+      kirimStatusPompa();
+    } else {
+      Serial.print("Gagal, kode: ");
+      Serial.println(mqtt.state());
+      delay(3000);
+    }
+  }
+}
+
+void kirimStatusPompa() {
+  char statusPayload[64];
+  snprintf(statusPayload, sizeof(statusPayload), "P1:%s,P2:%s", mqttPump1On ? "ON" : "OFF", mqttPump2On ? "ON" : "OFF");
+  mqtt.publish(TOPIC_PUMP_STATUS, statusPayload, true);
+}
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin(21, 22);
+
+  pinMode(Pump1, OUTPUT);
+  pinMode(Pump2, OUTPUT);
+  pinMode(BT, INPUT_PULLUP);
+
+  digitalWrite(Pump1, HIGH); // Relay OFF saat mulai (Aktif LOW)
+  digitalWrite(Pump2, HIGH);
+
+  if (!rtc.begin()) {
+    Serial.println("RTC DS3231 tidak ditemukan!");
+    while (true) delay(1000);
+  }
+
+  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  DateTime sekarang = rtc.now();
+  hariTerakhir = sekarang.day();
+  bulanTerakhir = sekarang.month();
+  tahunTerakhir = sekarang.year();
+
+  koneksiWiFi();
+  mqtt.setServer(MQTT_SERVER, MQTT_PORT);
+  mqtt.setCallback(callback);
+  mqtt.setBufferSize(512);
+}
+
+void loop() {
+  if (WiFi.status() != WL_CONNECTED) koneksiWiFi();
+  if (!mqtt.connected()) koneksiMQTT();
+  mqtt.loop();
+
+  DateTime sekarang = rtc.now();
+
+  // Reset jadwal jika hari berganti
+  if (sekarang.day() != hariTerakhir || sekarang.month() != bulanTerakhir || sekarang.year() != tahunTerakhir) {
+    hariTerakhir = sekarang.day(); bulanTerakhir = sekarang.month(); tahunTerakhir = sekarang.year();
+    for (int i = 0; i &lt; JUMLAH_JADWAL; i++) jadwalSudahJalan[i] = false;
+  }
+
+  // Periksa 4 jadwal pakan
+  for (int i = 0; i &lt; JUMLAH_JADWAL; i++) {
+    if (sekarang.hour() == jadwalJam[i] &amp;&amp; sekarang.minute() == jadwalMenit[i] &amp;&amp; !jadwalSudahJalan[i]) {
+      char pesanJadwal[100];
+      snprintf(pesanJadwal, sizeof(pesanJadwal), "JADWAL_PAKAN|%02d:%02d", jadwalJam[i], jadwalMenit[i]);
+      mqtt.publish(TOPIC_SCHEDULE, pesanJadwal);
+      mqtt.publish(TOPIC_RTC_LOG, pesanJadwal);
+      jadwalSudahJalan[i] = true;
+    }
+  }
+
+  bool tombolDitekan = (digitalRead(BT) == LOW);
+  bool p1Active = mqttPump1On || tombolDitekan;
+  bool p2Active = mqttPump2On;
+
+  digitalWrite(Pump1, p1Active ? LOW : HIGH);
+  digitalWrite(Pump2, p2Active ? LOW : HIGH);
+
+  // Kirim data RTC setiap 1 detik
+  if (millis() - waktuKirimTerakhir &gt;= INTERVAL_KIRIM) {
+    waktuKirimTerakhir = millis();
+    char tanggal[16], waktu[16], payload[320], logPesan[120];
+    snprintf(tanggal, sizeof(tanggal), "%02d/%02d/%04d", sekarang.day(), sekarang.month(), sekarang.year());
+    snprintf(waktu, sizeof(waktu), "%02d:%02d:%02d", sekarang.hour(), sekarang.minute(), sekarang.second());
+
+    snprintf(payload, sizeof(payload),
+      "{\"tanggal\":\"%s\",\"waktu\":\"%s\",\"pump1_status\":\"%s\",\"pump2_status\":\"%s\",\"pump_status\":\"%s\",\"mode\":\"mqtt\"}",
+      tanggal, waktu, p1Active ? "ON" : "OFF", p2Active ? "ON" : "OFF", (p1Active || p2Active) ? "ON" : "OFF");
+    mqtt.publish(TOPIC_RTC_DATA, payload);
+
+    snprintf(logPesan, sizeof(logPesan), "Tanggal: %s | Waktu: %s | P1:%s P2:%s", tanggal, waktu, p1Active ? "ON" : "OFF", p2Active ? "ON" : "OFF");
+    mqtt.publish(TOPIC_RTC_LOG, logPesan);
+
+    if (p1Active != statusP1Sebelumnya || p2Active != statusP2Sebelumnya) {
+      kirimStatusPompa();
+      statusP1Sebelumnya = p1Active;
+      statusP2Sebelumnya = p2Active;
+    }
+  }
+}</code></pre>
+        </div>
+
+        <div class="modal-footer">
+          <span class="text-xs text-muted">Lokasi file: <code>esp32_smart_feeding_rtc/esp32_smart_feeding_rtc.ino</code></span>
+          <button type="button" class="btn btn-secondary btn-sm" id="closeEsp32ModalFooterBtn">Tutup</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER: BOVINEFEED IOT WORKSTATION -->
+    <footer class="app-footer">
+      <div class="footer-inner">
+        <div class="footer-brand-row">
+          <svg class="footer-cow-icon" viewBox="0 0 24 24" fill="none" stroke="#23643b" stroke-width="2" stroke-linecap="round">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path>
+            <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+            <line x1="9" y1="9" x2="9.01" y2="9"></line>
+            <line x1="15" y1="9" x2="15.01" y2="9"></line>
+          </svg>
+          <span>Smart Feeder Station — Sistem Pakan &amp; Minum Sapi Otomatis Terpadu</span>
+        </div>
+        <p class="footer-subtext">Protokol: ESP32 Serial Telemetry 115200 Baud • I2C RTC DS3231 (SDA 21 / SCL 22) • Siklus Pakan Ruminansia 3x Sehari (06:00, 12:00, 18:00 WIB)</p>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- Scripts -->
+  <script src="js/parser.js"></script>
+  <script src="js/simulation.js"></script>
+  <script src="js/mqtt-client.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
