@@ -10,7 +10,7 @@ Aplikasi web dashboard monitoring IoT untuk sistem pakan dan bak minum sapi otom
 
 ---
 
-## 🌟 Fitur Utama
+## Fitur Utama
 
 Aplikasi ini terhubung langsung secara real-time ke firmware Arduino ESP32 melalui broker publik **`broker.emqx.io`**:
 
@@ -52,7 +52,7 @@ Aplikasi ini terhubung langsung secara real-time ke firmware Arduino ESP32 melal
 
 ---
 
-## 📁 Struktur Direktori
+## Struktur Direktori
 
 ```text
 ├── index.html                                    # Antarmuka dashboard IoT bertema cream & hijau
@@ -75,7 +75,7 @@ Aplikasi ini terhubung langsung secara real-time ke firmware Arduino ESP32 melal
 
 ---
 
-## 🚀 Cara Menjalankan
+## Cara Menjalankan
 
 Aplikasi ini berbasis **Vanilla HTML, CSS, dan JavaScript murni** tanpa dependensi pihak ketiga atau proses *build*.
 
@@ -96,7 +96,7 @@ Klik dua kali file `index.html` untuk langsung membukanya di browser modern apa 
 
 ---
 
-## 🧪 Matriks Pengujian Acceptance Criteria (TC-01 s/d TC-12)
+## Matriks Pengujian Acceptance Criteria (TC-01 s/d TC-12)
 
 | ID | Skenario Uji | Cara Pengujian | Hasil yang Diharapkan | Status |
 |---|---|---|---|---|
